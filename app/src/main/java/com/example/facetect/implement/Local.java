@@ -1,5 +1,7 @@
-package com.example.facetect.implment;
+package com.example.facetect.implement;
 
+import static com.example.facetect.bean.faces_location.getFaceslocation;
+import static com.example.facetect.bean.faces_location.setFaceslocation;
 import static org.opencv.imgproc.Imgproc.COLOR_BGRA2BGR;
 import static org.opencv.imgproc.Imgproc.COLOR_RGB2GRAY;
 import static org.opencv.imgproc.Imgproc.calcHist;
@@ -8,6 +10,7 @@ import static org.opencv.imgproc.Imgproc.cvtColor;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.FaceDetector;
 import android.util.Log;
 import android.util.Pair;
 
@@ -21,7 +24,6 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfFloat;
 import org.opencv.core.MatOfInt;
-import org.opencv.core.MatOfRect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -154,56 +156,38 @@ public class Local implements IDetectFace {
     public boolean SaveFeature(Bitmap bitmap,String name){
         //裁剪
         Mat image = new Mat();
+        Mat imageT = new Mat();
         Utils.bitmapToMat(bitmap,image);
-        Imgproc.resize(image,image,YNsize);
+        //Imgproc.resize(image,image,YNsize);
 //转换为rgb三通道
-        Mat rgb = new Mat();
-        cvtColor(image,rgb,COLOR_BGRA2BGR);
-//中间临时量
-        Mat faces = new Mat();
-        Mat Aligned_img = new Mat();
-        Mat feature = new Mat();
-
-        if(!rgb.empty()){
-            mJavaDetectorYN.setInputSize(rgb.size());
-            mJavaDetectorYN.detect(rgb,faces);
-
-            if(faces.empty()){
-                return false;
-            }
-            else{
-                mJavaRecognizeSF.alignCrop(rgb,faces.row(0),Aligned_img);
-                mJavaRecognizeSF.feature(Aligned_img,feature);
-                SaveFeature(new Pair<>(name,feature.clone()));
-                return true;
-            }
-
+        Core.transpose(image,imageT);
+        Pair<Mat,Mat> result =  FaceDetect(preprocess(imageT));
+        if(result==null){
+            return false ;
         }
-        return false;
+
+        Mat feature = FeatureExtract(result.first);
+        SaveFeature(new Pair<>(name,feature.clone()));
+
+        return true;
     }
 
     //</editor-fold>
 
 
 
-    @Override
+
+    //8UC4 8UC4
     public Mat preprocess(Mat inputMat) {
+        cvtColor(inputMat,inputMat,COLOR_BGRA2BGR);
         Mat mRgba = new Mat();
-        Mat mGray= new Mat();
         Core.transpose(inputMat,mRgba);
-        Imgproc.cvtColor(inputMat,inputMat,COLOR_RGB2GRAY);
-        Core.transpose(inputMat,mGray);
-
-
-
-        Mat mat=new Mat(50,50, CvType.CV_8UC3,new Scalar(0,0,255));
-        //为什么用Array List 初始化 LIst
+        //计算颜色分布直方图
         List<Mat> imgs = new ArrayList<Mat>();
         imgs.add(mRgba);
         MatOfFloat mfloat=new MatOfFloat(0,256);
         Mat hist = new Mat();
         calcHist(imgs,new MatOfInt(1),new Mat(),hist,new MatOfInt(100),mfloat);
-
         int maxIndex=-1;
         double maxcount = 0;
         for(int i = 0;i<100;i++){
@@ -212,51 +196,35 @@ public class Local implements IDetectFace {
                 maxIndex = i;
             }
         }
-
+        //设置对比度
         maxIndex = (int) (-0.5*maxIndex+40);
         int brightess = maxIndex;
         double alpha = 2;
         double beta = 127*(1-alpha)+brightess;
         mRgba.convertTo(mRgba,mRgba.type(),alpha,beta);
-        long second = System.currentTimeMillis();
         return mRgba.clone();
-
     }
-
-    @Override
-    public MatOfRect FaceDetect(Mat inputMat) {
-        Mat mGray = new Mat();
-        Imgproc.cvtColor(inputMat,mGray,COLOR_RGB2GRAY);
-        MatOfRect faces = new MatOfRect();
-        if (mJavaDetector != null)
-            mJavaDetector.detectMultiScale(inputMat, faces, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
-                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
-//            mJavaDetector.detectMultiScale2(mGray, faces, new MatOfInt(1),1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
-//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
-        return faces;
-    }
-
-    @Override
-    public Mat FeatureExtract(Mat inputMat, MatOfRect outputRect) {
-        inputMat.convertTo(inputMat,CvType.CV_8UC3);
-        Mat rgb = new Mat();
-        cvtColor(inputMat,rgb,COLOR_BGRA2BGR);
+    //8UC4 32FC1
+    public Pair<Mat,Mat>  FaceDetect(Mat inputMat) {
         Mat YNfaces = new Mat();
-        mJavaDetectorYN.setInputSize(rgb.size());
-        int t = mJavaDetectorYN.detect(rgb,YNfaces);
         Mat Align_faces = new Mat();
-        Mat feature = new Mat();
-        int NameIndex = -1;
-        long forth = System.currentTimeMillis();
-        if(!YNfaces.empty()){
-            mJavaRecognizeSF.alignCrop(rgb,YNfaces.row(0),Align_faces);
-            mJavaRecognizeSF.feature(Align_faces,feature);
-            return  feature;
+        mJavaDetectorYN.setInputSize(inputMat.size());
+        mJavaDetectorYN.detect(inputMat,YNfaces);
+        if(YNfaces.empty()){
+            return null;
         }
-        return null;
+        mJavaRecognizeSF.alignCrop(inputMat,inputMat.row(0),Align_faces);
+        return new Pair<>(Align_faces,YNfaces) ;
     }
 
-    @Override
+    //32FC1 8UC4  ->32FC1
+    public Mat FeatureExtract(Mat Align_faces) {
+        Mat feature = new Mat();
+        mJavaRecognizeSF.feature(Align_faces,feature);
+        return  feature;
+
+    }
+
     public String FeatureRecognize(Mat feature) {
         double score = -9990;
         String Name = "";
@@ -270,8 +238,133 @@ public class Local implements IDetectFace {
         return Name;
     }
 
+    /**
+     * 输入与输出内容定义
+     * Object[0] 临时变量
+     * Object[1] 人脸位置
+     * Object[2] 后处理图片
+     * @param start
+     * @param end
+     * @param objects
+     * @return
+     */
+    private Mat _faces ;
+    @Override
+    public Object[] callFunction(int start, int end, Object[] objects) {
+        if(start==0){
+            if(end==1){
+                Object[] result = new Object[3];
+                result[0]=preprocess((Mat) objects[0]);
+                //Object[2] 后处理图片
+                return result;
+            }
+            else if(end==2){
+                Object[] result = new Object[3];
+                //返回人脸位置
+                Pair<Mat,Mat> Faces = FaceDetect(preprocess((Mat) objects[0]));
+                if(Faces==null){
+                    return result;
+                }
+                setFaceslocation(Faces.second);
+                result[0] =  Faces.first;
+
+                return result;
+            }
+            else if (end==3){
+                Object[] result = new Object[2];
+                Mat afterProcess =  preprocess((Mat) objects[0]);
+                //不用返回后处理图像
+                //返回人脸位置
+                Pair<Mat,Mat> Faces  =  FaceDetect(afterProcess);
+                if(Faces==null){
+                    return result;
+                }
+                setFaceslocation(Faces.second);
+                result[0]  = FeatureExtract(Faces.first);
+                return result;
+            }
+            else{
+                Object[] result = new Object[2];
+                Mat afterProcess =  preprocess((Mat) objects[0]);
+                //返回人脸位置
+                Pair<Mat,Mat> Faces  =  FaceDetect(afterProcess);
+                if(Faces==null){
+                    return result;
+                }
+                result[1] = Faces.second;
+                result[0]  = FeatureRecognize(FeatureExtract(Faces.first));
+                return result;
+            }
+        }
+        else if(start==1){
+
+            if(end ==2){
+                Object[] result = new Object[3];
+                //返回人脸位置
+                Pair<Mat,Mat> Faces  =  FaceDetect((Mat) objects[0]);
+                if(Faces==null){
+                    return result;
+                }
+                setFaceslocation(Faces.second);
+                result[0] = Faces.first;
+                return result;
+            }
+            else if(end == 3){
+                Object[] result = new Object[2];
+                //返回人脸位置
+                Pair<Mat,Mat> Faces  =  FaceDetect((Mat) objects[0]);
+                if(Faces==null){
+                    return result;
+                }
+                setFaceslocation(Faces.second);
+                //特征向量
+                result[0]  = FeatureExtract((Mat) Faces.first );
+                return result;
+            }
+            else {
+                Object[] result = new Object[2];
+                //返回人脸位置
+                Pair<Mat,Mat> Faces  =  FaceDetect((Mat) objects[0]);
+                if(Faces==null){
+                    return result;
+                }
+                result[1] = Faces.second;
+
+                result[0] = FeatureRecognize(FeatureExtract((Mat) Faces.first ));
+                return result;
+            }
+        }
+        else if (start==2){
+
+            if(end==3){
+                Object[] result = new Object[2];
+                result[0] =  FeatureExtract((Mat) objects[0]);
+                return result;
+            }
+            else{
+                Object[] result = new Object[2];
+                Mat face_loc = getFaceslocation();
+                if(face_loc!=null&&!face_loc.empty()){
+                    result[1] = face_loc;
+                }
+                result[0] =  FeatureRecognize(FeatureExtract((Mat) objects[0]));
+                return result;
+            }
+        }
+        else {
+            Object [] result = new Object[2];
+            Mat face_loc = getFaceslocation();
+            if(face_loc!=null&&!face_loc.empty()){
+                result[1] = face_loc;
+            }
+            result[0] = FeatureRecognize((Mat) objects[0]);
+            return result;
+        }
+    }
+
     @Override
     public void init(CameraActivity RunningObjet, Context context) {
+        _faces = new Mat();
         CurrentObject = RunningObjet;
         setCurrentActivity(RunningObjet.getClass());
         Context = context;

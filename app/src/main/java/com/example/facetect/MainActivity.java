@@ -231,66 +231,11 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
     public void onResume()
     {
         super.onResume();
-
         if (!OpenCVLoader.initDebug()) {
 
             Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
         } else {
-
-//            new Thread(new Runnable() {
-//                @Override
-//                public void run() {
-//                    try {
-//                        Socket socket = null;
-//                        try {
-//                            socket = new Socket("222.201.190.153",9001);
-//
-//                            OutputStream os = socket.getOutputStream();
-//                            byte [] send = new  byte[1024];
-//                            for (int i = 0; i < send.length; i++) {
-//                                send[i]= ((byte) i);
-//                            }
-//
-//                            Features features  = new Features();
-//                            float [] floatsList = new float[]{(float) 0.145234534,(float) 0.22323};
-//
-//                            List<float []> floats = new ArrayList<>();
-//                            floats.add(floatsList);
-//                            os.write(send);
-//                            //oos.writeObject(floatsList);
-//                            byte [] rec = new  byte[1024];
-//                            //os.write(send);
-//
-//                            InputStream is = socket.getInputStream();
-//                            is.read(rec);
-//                            //os.close();
-//                            is.close();
-//                            socket.close();
-//
-//                            for (int i = 0; i < rec.length; i++) {
-//                                System.out.println((char) rec[i]);
-//                            }
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
-//                        URL myurl = null;
-//                        myurl = new URL("https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fworld.chinadaily.com.cn%2Fimg%2Fattachement%2Fjpg%2Fsite1%2F20161022%2Ff8bc126d91a519756b700e.jpg&refer=http%3A%2F%2Fworld.chinadaily.com.cn&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1671071355&t=7b64cc3ef7c13ce10cf58fec9122284f");
-//                        HttpURLConnection conn = (HttpURLConnection) myurl.openConnection();
-//                        conn.connect();
-//                        InputStream is = conn.getInputStream();//获得图片的数据流
-//                        BufferedInputStream bufferedInputStream = new BufferedInputStream(is);
-//                        Bitmap bmp = BitmapFactory.decodeStream( is );//读取图像数据
-//                        int n = bmp.getByteCount();
-//                        System.out.println(n);
-//                    } catch (IOException e) {
-//                        e.printStackTrace();
-//                    }
-//
-//                }
-//            }).start();
-
-
             //加载器回调
             Log.d(TAG, "OpenCV library found inside package. Using it!");
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
@@ -444,42 +389,22 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
             return new Mat();
         }
 
-        long first = System.currentTimeMillis();
-        //图像预处理
-        Mat mRgba = new Mat();
-        mRgba = faceDetector.preprocess(inputFrame.rgba());
-
-        long second = System.currentTimeMillis();
-        //人脸检测
-        MatOfRect faces = faceDetector.FaceDetect(mRgba);
-
-        long third = System.currentTimeMillis();
-        //特征提取
-        String name = "";
-        Mat feature =faceDetector.FeatureExtract(mRgba,faces);
-        long forth = System.currentTimeMillis();
-        if(feature!=null){
-            name = faceDetector.FeatureRecognize(feature);
+        Mat mRgba =inputFrame.rgba();
+        Pair<String,Mat> result = faceDetector.detectFace(mRgba.clone());
+        if(result==null){
+            return mRgba;
         }
-
-        Rect[] facesArray = faces.toArray();
+        Mat faces = result.second;
+        String name = result.first;
+        //绘制图框
+        //Point p1 = new Point(faces.get(0,0)[0],faces.get(0,1)[0]);
+        Point p1 = new Point(faces.get(0,1)[0],faces.get(0,0)[0]);
+        Point p2 = new Point(faces.get(0,1)[0]+faces.get(0,3)[0],faces.get(0,2)[0]+faces.get(0,0)[0]);
         Scalar FACE_RECT_COLOR     = new Scalar(0, 255, 0, 255);
-        for (int i = 0; i < facesArray.length; i++)
-            Imgproc.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(), FACE_RECT_COLOR, 3);
+        Imgproc.rectangle(mRgba, p1 ,p2, FACE_RECT_COLOR, 3);
 
-        //Core.multiply(mRgba,new Scalar(2,2,2),mRgba);
-        Core.transpose(mRgba,mRgba);
-        Imgproc.putText(mRgba,name,new Point(50,450),FONT_HERSHEY_PLAIN,5,new Scalar(244,123,153),3,LINE_4,false);
+        //Imgproc.putText(mRgba,name,new Point(50,450),FONT_HERSHEY_PLAIN,5,new Scalar(244,123,153),3,LINE_4,false);
         addonScreenMessage("detect " + name);
-
-        long fifth = System.currentTimeMillis();
-
-        long period1 = second - first;
-        long period2 = third - second;
-        long period3 = forth - third;
-        long period4 =  fifth- forth;
-        addonScreenMessage("预处理："+period1+"  人脸检测 "+period2+"  特征提取"+period3+"  特征匹配"+period4);
-        Log.e(TAG, "预处理："+period1+"  人脸检测 "+period2+"  特征提取"+period3+"  特征匹配"+period4);
 
         return mRgba;
     }
