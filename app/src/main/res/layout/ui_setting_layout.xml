@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    tools:background="#1B202D">
+
+    <!-- TODO: Update blank fragment layout -->
+    <TextView
+        android:id="@+id/addressTv"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="address"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_margin="10dp"
+        />
+
+    <EditText
+        android:id="@+id/addressEt"
+        android:layout_width="100dp"
+        android:layout_height="20dp"
+        android:text="服務器地址"
+        android:textColor="@color/black"
+        android:layout_alignBottom="@id/addressTv"
+        android:layout_toRightOf="@id/addressTv"
+        android:layout_marginLeft="10dp"/>
+
+    <TextView
+        android:id="@+id/portTv"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/addressTv"
+        android:layout_alignLeft="@id/addressTv"
+        android:layout_marginTop="13dp"
+        android:text="port" />
+
+    <EditText
+        android:id="@+id/portEt"
+        android:layout_width="100dp"
+        android:layout_height="20dp"
+        android:text="輸入0或1"
+        android:textColor="@color/black"
+        android:layout_alignLeft="@id/addressEt"
+        android:layout_alignBottom="@id/portTv"
+        android:layout_toRightOf="@id/portTv" />
+
+    <TextView
+        android:id="@+id/divisionTv"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="100dp"
+        android:layout_marginTop="10dp"
+        android:layout_toRightOf="@id/addressTv"
+        android:text="division" />
+
+    <EditText
+        android:id="@+id/divisionEt"
+        android:layout_width="100dp"
+        android:layout_height="20dp"
+        android:text="輸入0或1"
+        android:textColor="@color/black"
+        android:layout_alignBottom="@id/divisionTv"
+        android:layout_toRightOf="@id/divisionTv"
+        android:layout_marginLeft="10dp"/>
+
+    <Button
+        android:id="@+id/confirm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="OK"
+        android:layout_below="@id/divisionEt"
+        android:layout_alignLeft="@id/divisionEt"/>
+
+</RelativeLayout>

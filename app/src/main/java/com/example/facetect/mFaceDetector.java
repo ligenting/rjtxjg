@@ -29,16 +29,23 @@ public class mFaceDetector {
 
     private boolean [] divide = new boolean[MODULE_NUMBER];
 
+    public void SetRemoteConfig(String address,int port){
+        if(RemoteDetector!=null){
+            ((Remote)RemoteDetector).setAddress(address);
+            ((Remote)RemoteDetector).setPort(port);
+        }
+    }
     public void  init(CameraActivity RunningObject,Context context){
         Localdetector.init(RunningObject,context);
         RemoteDetector.init(RunningObject,context);
         //todo 更改划分
-        setDivide(new boolean[]{LOCAL_CALL,LOCAL_CALL,REMOTE_CALL,REMOTE_CALL});
+        setDivide(new boolean[]{LOCAL_CALL,REMOTE_CALL,LOCAL_CALL,REMOTE_CALL});
     }
 
     //根据划分建立函数
     public void setDivide(boolean[] divide) {
         this.divide = divide;
+        callableList.clear();
         int start = 0;
         for (int last = 0; last < MODULE_NUMBER;) {
             boolean flag  = divide[last];

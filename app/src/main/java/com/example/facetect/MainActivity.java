@@ -42,6 +42,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
+import android.text.Editable;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
@@ -53,6 +54,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.PopupWindow;
 import android.widget.TextView;
@@ -61,6 +63,8 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import org.opencv.objdetect.FaceDetectorYN;
 import org.opencv.videoio.VideoCapture;
@@ -91,7 +95,10 @@ import java.util.Timer;
 
 import com.example.facetect.bean.Features;
 import com.example.facetect.bean.Image;
-public class MainActivity extends CameraActivity implements CvCameraViewListener2, View.OnTouchListener {
+import com.example.facetect.ui.Setting;
+import com.example.facetect.ui.settingLayout;
+import com.example.facetect.ui.settingLayout;
+public class MainActivity extends CameraActivity implements CvCameraViewListener2, View.OnClickListener{
 
     private static final String  TAG = "FaceDetect::Activity";
     private static final int OPEN_ALBUM_REQUESTCODE = 88;
@@ -106,6 +113,13 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
     private mFaceDetector faceDetector;
     private Bitmap SelectImg;
     private Mat DetectFrame;
+
+    private EditText Address;
+    private EditText Port;
+    private EditText Division;
+    private Button ConfigButton;
+    private Setting settingLy;
+
 
     //<editor-fold desc="工具方法">
     private String getPicPath(Uri uri){
@@ -181,6 +195,40 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
         textView_log = findViewById(R.id.log_content);
         faceDetector = new mFaceDetector();
 
+
+        Address = findViewById(R.id.address);
+        Port = findViewById(R.id.port);
+        Division = findViewById(R.id.division);
+        ConfigButton = findViewById(R.id.confirm_button);
+        ConfigButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String address  = Address.getText().toString();
+                if(Port.getText().toString().isEmpty()){
+                    return;
+                }
+                if(Address.getText().toString().isEmpty()){
+                    return;
+                }
+                String text = Division.getText().toString();
+                if(text.isEmpty()||text.length()<4){
+                    return;
+                }
+                int port = Integer.parseInt(Port.getText().toString());
+                boolean[] division = new boolean[4];
+                if(text.isEmpty()||text.length()<4){
+                    return;
+                }
+                Editable tmp = Division.getText();
+                division[0] = tmp.charAt(0)=='1';
+                division[1] = tmp.charAt(1)=='1';
+                division[2] = tmp.charAt(2)=='1';
+                division[3] = tmp.charAt(3)=='1';
+                faceDetector.SetRemoteConfig(address,port);
+                faceDetector.setDivide(division);
+                addonScreenMessage("Address:"+address+"port:"+port+"division"+division.toString());
+            }
+        });
         DetectFace.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -329,7 +377,6 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
 
                     /* Now enable camera view to start receiving frames */
                     //设置触摸监听器
-                    mOpenCvCameraView.setOnTouchListener(MainActivity.this);
                     mOpenCvCameraView.enableView();
 
                     faceDetector.init(MainActivity.this,getApplicationContext());
@@ -452,5 +499,12 @@ public class MainActivity extends CameraActivity implements CvCameraViewListener
             return inputFrame.rgba();
         }
 
+    }
+
+    @Override
+    public void onClick(View view) {
+        if(view.getId()!=R.id.button_detect&&view.getId()!=R.id.button_select){
+
+        }
     }
 }

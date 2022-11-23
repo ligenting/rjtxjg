@@ -174,9 +174,6 @@ public class Local implements IDetectFace {
 
     //</editor-fold>
 
-
-
-
     //8UC4 8UC4
     public Mat preprocess(Mat inputMat) {
         cvtColor(inputMat,inputMat,COLOR_BGRA2BGR);
